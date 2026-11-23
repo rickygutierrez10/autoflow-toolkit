@@ -1,6 +1,9 @@
 
 import hashlib
+import logging
 from pathlib import Path
+
+logger = logging.getLogger("autoflow")
 
 
 def calculate_file_hash(file_path: Path) -> str:
@@ -27,8 +30,17 @@ def find_duplicates(folder: str) -> dict:
         if not file_path.is_file():
             continue
 
-        file_hash = calculate_file_hash(file_path)
-        hashes.setdefault(file_hash, []).append(file_path)
+        try:
+            file_hash = calculate_file_hash(file_path)
+            hashes.setdefault(file_hash, []).append(file_path)
+
+        except OSError as error:
+            logger.warning(
+                "Could not read file %s: %s",
+                file_path,
+                error
+            )
+            continue
 
     return {
         file_hash: paths

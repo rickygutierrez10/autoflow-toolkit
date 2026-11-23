@@ -2,6 +2,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from autoflow.duplicates import find_duplicates, calculate_file_hash
 
@@ -54,6 +55,37 @@ class TestDuplicateFinder(unittest.TestCase):
             second_hash = calculate_file_hash(file)
 
             self.assertEqual(first_hash, second_hash)
+
+    def test_skips_unreadable_file_and_continues_scanning(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            first = folder / "file1.txt"
+            second = folder / "file2.txt"
+            unreadable = folder / "unreadable.txt"
+
+            first.write_text("same content")
+            second.write_text("same content")
+            unreadable.write_text("cannot read this file")
+
+            def simulate_read_error(file_path):
+                if file_path.name == "unreadable.txt":
+                    raise PermissionError("Permission denied")
+
+                return calculate_file_hash(file_path)
+
+            with patch(
+                "autoflow.duplicates.calculate_file_hash",
+                side_effect=simulate_read_error
+            ):
+                duplicates = find_duplicates(str(folder))
+
+            self.assertEqual(len(duplicates), 1)
+
+            duplicate_files = list(duplicates.values())[0]
+
+            self.assertEqual(len(duplicate_files), 2)
+            self.assertNotIn(unreadable, duplicate_files)
 
 
 if __name__ == "__main__":
