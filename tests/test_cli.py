@@ -44,6 +44,32 @@ class TestCLI(unittest.TestCase):
             self.assertIn("file1.txt", result.stdout)
             self.assertIn("file2.txt", result.stdout)
 
+    def test_duplicates_command_shows_scan_statistics(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            (folder / "one.txt").write_text("same content")
+            (folder / "two.txt").write_text("same content")
+            (folder / "three.txt").write_text("different content")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "autoflow.cli",
+                    "duplicates",
+                    str(folder),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("Files scanned: 3", result.stdout)
+            self.assertIn("Duplicate groups: 1", result.stdout)
+            self.assertIn("Files involved: 2", result.stdout)
+            self.assertIn("Files skipped: 0", result.stdout)
+
     def test_organise_rejects_missing_folder(self):
         with tempfile.TemporaryDirectory() as temporary_folder:
             missing_folder = Path(temporary_folder) / "missing"
