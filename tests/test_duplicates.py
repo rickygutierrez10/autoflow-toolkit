@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from autoflow.duplicates import (
+    calculate_duplicate_savings,
     find_duplicates,
     calculate_file_hash,
     scan_duplicates,
@@ -124,6 +125,49 @@ class TestDuplicateFinder(unittest.TestCase):
             self.assertEqual(len(duplicate_files), 2)
             self.assertNotIn(unreadable, duplicate_files)
 
+
+    def test_calculates_duplicate_storage_savings(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            first = folder / "first.txt"
+            second = folder / "second.txt"
+            third = folder / "third.txt"
+
+            first.write_text("same content")
+            second.write_text("same content")
+            third.write_text("same content")
+
+            duplicates = {
+                "test_hash": [first, second, third]
+            }
+
+            savings = calculate_duplicate_savings(duplicates)
+
+            self.assertEqual(
+                savings,
+                first.stat().st_size * 2,
+            )
+
+    def test_returns_zero_when_no_duplicates_exist(self):
+        savings = calculate_duplicate_savings({})
+
+        self.assertEqual(savings, 0)
+
+    def test_does_not_count_unique_files_as_savings(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            file = folder / "single.txt"
+            file.write_text("only one copy")
+
+            duplicates = {
+                "test_hash": [file]
+            }
+
+            savings = calculate_duplicate_savings(duplicates)
+
+            self.assertEqual(savings, 0)
 
 if __name__ == "__main__":
     unittest.main()

@@ -54,6 +54,30 @@ def scan_duplicates(folder: str) -> tuple[dict, int, int]:
     return duplicates, scanned_files, skipped_files
 
 
+def calculate_duplicate_savings(duplicates: dict) -> int:
+    """Calculate potential storage savings from duplicate files."""
+
+    potential_savings = 0
+
+    for paths in duplicates.values():
+        if len(paths) < 2:
+            continue
+
+        try:
+            file_size = paths[0].stat().st_size
+
+            potential_savings += file_size * (len(paths) - 1)
+
+        except OSError as error:
+            logger.warning(
+                "Could not calculate duplicate file size for %s: %s",
+                paths[0],
+                error
+            )
+
+    return potential_savings
+
+
 def find_duplicates(folder: str) -> dict:
     """Find files with identical contents inside a folder."""
     duplicates, _, _ = scan_duplicates(folder)
