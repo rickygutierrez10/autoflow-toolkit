@@ -1,5 +1,10 @@
+
 import logging
 import argparse
+
+from autoflow.duplicates import find_duplicates
+from autoflow.files import organise_files
+
 logging.basicConfig(
     filename="autoflow.log",
     level=logging.INFO,
@@ -7,10 +12,6 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("autoflow")
-from pathlib import Path
-
-from autoflow.files import organise_files
-
 
 
 def main():
@@ -21,6 +22,7 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    # Organise command
     organise_parser = subparsers.add_parser(
         "organise",
         help="Organise files into folders."
@@ -35,6 +37,17 @@ def main():
         "--apply",
         action="store_true",
         help="Actually move files. Without this option, only preview changes."
+    )
+
+    # Duplicate detection command
+    duplicate_parser = subparsers.add_parser(
+        "duplicates",
+        help="Find duplicate files."
+    )
+
+    duplicate_parser.add_argument(
+        "folder",
+        help="Folder to scan for duplicate files."
     )
 
     args = parser.parse_args()
@@ -59,7 +72,26 @@ def main():
         except (NotADirectoryError, PermissionError) as error:
             parser.exit(1, f"Error: {error}\n")
 
+    elif args.command == "duplicates":
+        try:
+            duplicates = find_duplicates(args.folder)
+
+            if not duplicates:
+                print("No duplicate files found.")
+                return
+
+            print("\nAUTOFLOW DUPLICATES")
+            print("-" * 35)
+
+            for file_hash, paths in duplicates.items():
+                print("\nDuplicate group:")
+
+                for path in paths:
+                    print(f"  {path}")
+
+        except (NotADirectoryError, PermissionError) as error:
+            parser.exit(1, f"Error: {error}\n")
+
 
 if __name__ == "__main__":
     main()
-
