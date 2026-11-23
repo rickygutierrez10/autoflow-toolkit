@@ -4,10 +4,47 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from autoflow.duplicates import find_duplicates, calculate_file_hash
-
+from autoflow.duplicates import (
+    find_duplicates,
+    calculate_file_hash,
+    scan_duplicates,
+)
 
 class TestDuplicateFinder(unittest.TestCase):
+
+    def test_scan_duplicates_returns_file_count(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+            (folder / "one.txt").write_text("first")
+            (folder / "two.txt").write_text("second")
+            (folder / "three.txt").write_text("third")
+
+            duplicates, scanned, skipped = scan_duplicates(str(folder))
+
+            self.assertEqual(scanned, 3)
+            self.assertEqual(skipped, 0)
+            self.assertEqual(duplicates, {})
+
+    def test_scan_duplicates_counts_duplicate_files(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+            (folder / "one.txt").write_text("same content")
+            (folder / "two.txt").write_text("same content")
+            (folder / "three.txt").write_text("different content")
+
+            duplicates, scanned, skipped = scan_duplicates(str(folder))
+
+            self.assertEqual(scanned, 3)
+            self.assertEqual(skipped, 0)
+            self.assertEqual(len(duplicates), 1)
+            self.assertEqual(len(list(duplicates.values())[0]), 2)
+
+    def test_scan_duplicates_rejects_missing_folder(self):
+        with TemporaryDirectory() as temp:
+            missing_folder = Path(temp) / "missing"
+
+            with self.assertRaises(NotADirectoryError):
+                scan_duplicates(str(missing_folder))
 
     def test_finds_identical_files(self):
         with TemporaryDirectory() as temp:
