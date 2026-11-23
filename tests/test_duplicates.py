@@ -169,5 +169,44 @@ class TestDuplicateFinder(unittest.TestCase):
 
             self.assertEqual(savings, 0)
 
+    def test_does_not_hash_files_with_unique_sizes(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            (folder / "small.txt").write_text("abc")
+            (folder / "large.txt").write_text("this is longer")
+
+            with patch(
+                "autoflow.duplicates.calculate_file_hash"
+            ) as hash_mock:
+                duplicates, scanned, skipped = scan_duplicates(
+                    str(folder)
+                )
+
+            self.assertEqual(duplicates, {})
+            self.assertEqual(scanned, 2)
+            self.assertEqual(skipped, 0)
+            hash_mock.assert_not_called()
+
+    def test_hashes_files_with_matching_sizes(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            (folder / "first.txt").write_text("hello")
+            (folder / "second.txt").write_text("world")
+
+            with patch(
+                "autoflow.duplicates.calculate_file_hash",
+                wraps=calculate_file_hash,
+            ) as hash_mock:
+                duplicates, scanned, skipped = scan_duplicates(
+                    str(folder)
+                )
+
+            self.assertEqual(duplicates, {})
+            self.assertEqual(scanned, 2)
+            self.assertEqual(skipped, 0)
+            self.assertEqual(hash_mock.call_count, 2)
+
 if __name__ == "__main__":
     unittest.main()
