@@ -4,7 +4,7 @@
 
 AutoFlow Toolkit helps users organise cluttered directories, identify duplicate files and understand how much storage space could potentially be recovered.
 
-It provides safe previews, recursive scanning, duplicate detection and detailed scan statistics through a simple command-line interface.
+It provides safe previews, recursive scanning, duplicate detection, CSV report exports and detailed scan statistics through a simple command-line interface.
 
 ## Features
 
@@ -14,6 +14,8 @@ It provides safe previews, recursive scanning, duplicate detection and detailed 
 - **Duplicate Detection:** Identifies files with identical contents using SHA-256 hashing.
 - **Storage Analysis:** Calculates potential storage savings from duplicate files.
 - **Optimised Scanning:** Checks file sizes before hashing to avoid unnecessary processing.
+- **CSV Reports:** Export duplicate detection results to a CSV file for further analysis.
+- **Report Protection:** Prevents existing CSV reports from being overwritten and excludes the selected report from the duplicate scan.
 - **Collision Protection:** Prevents existing files from being overwritten when organising files.
 - **Error Handling:** Handles inaccessible files and continues scanning where possible.
 - **Activity Logging:** Records important operations and errors.
@@ -133,7 +135,32 @@ Duplicate detection uses SHA-256 hashing. File sizes are checked first to reduce
 
 **Note:** AutoFlow identifies duplicates and calculates potential savings. It does not automatically delete files.
 
-### 3. Run the Demonstration
+### 3. Export Duplicate Results to CSV
+
+Export duplicate detection results to a CSV report:
+
+```bash
+autoflow duplicates /path/to/folder --export duplicates.csv
+```
+
+You can also specify a full output path:
+
+```bash
+autoflow duplicates /path/to/folder --export /path/to/reports/duplicates.csv
+```
+
+The CSV report includes:
+
+- Duplicate group hash
+- File path
+- File size in bytes
+- Potential storage savings in bytes
+
+AutoFlow creates the report directory if it does not already exist.
+
+**Report protection:** AutoFlow will not overwrite an existing report. If the requested report file already exists, the export is refused and the existing file is left unchanged. When the report is inside the directory being scanned, it is excluded from the duplicate scan.
+
+### 4. Run the Demonstration
 
 Run the included demonstration:
 
@@ -170,6 +197,7 @@ AutoFlow includes automated tests covering:
 - File hashing
 - Storage savings calculations
 - Duplicate scanning optimisation
+- CSV report export and protection
 - Command-line functionality
 - Error handling
 
