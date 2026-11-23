@@ -1,15 +1,15 @@
-
 # AutoFlow Toolkit
 
-A simple Python automation toolkit that helps organise files into folders based on their file extensions.
+A simple Python automation toolkit that helps organise files and detect duplicate files using their contents.
 
 ## Features
 
 - Automatically organises files into categories.
 - Supports images, documents, videos, archives and spreadsheets.
-- Preview changes before moving files.
+- Preview changes before moving anything.
 - Safe mode by default.
 - Prevents existing files from being overwritten.
+- Detects duplicate files using SHA-256 hashing.
 - Logs organisation activity.
 - Includes automated tests.
 
@@ -37,6 +37,8 @@ python -m pip install -e .
 
 ## Usage
 
+### 1. Organise files
+
 Preview file organisation without moving anything:
 
 ```bash
@@ -48,6 +50,16 @@ Actually move the files:
 ```bash
 autoflow organise /path/to/your/folder --apply
 ```
+
+### 2. Find duplicate files
+
+Scan a folder for files with identical contents:
+
+```bash
+autoflow duplicates /path/to/your/folder
+```
+
+AutoFlow uses SHA-256 hashing to compare file contents. Files with identical contents are displayed together in duplicate groups.
 
 ## Supported File Categories
 
@@ -62,6 +74,8 @@ autoflow organise /path/to/your/folder --apply
 Unrecognised file types are placed in an `Other` folder.
 
 ## Running Tests
+
+Run the automated test suite:
 
 ```bash
 python -m unittest discover -s tests -v
