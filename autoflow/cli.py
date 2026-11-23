@@ -1,12 +1,16 @@
 
 import logging
 import argparse
+from pathlib import Path
 
 from autoflow.duplicates import find_duplicates
 from autoflow.files import organise_files
 
+
+LOG_FILE = Path("autoflow.log")
+
 logging.basicConfig(
-    filename="autoflow.log",
+    filename=str(LOG_FILE),
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -60,6 +64,7 @@ def main():
 
             if not results:
                 print("No files found to organise.")
+                logger.info("No files found to organise.")
                 return
 
             print("\nAUTOFLOW RESULTS")
@@ -69,27 +74,54 @@ def main():
                 print(f"{filename}: {result}")
                 logger.info("%s: %s", filename, result)
 
+            print(f"\nFiles processed: {len(results)}")
+            print(f"Activity log: {LOG_FILE.resolve()}")
+
         except (NotADirectoryError, PermissionError) as error:
+            logger.error("Organisation failed: %s", error)
             parser.exit(1, f"Error: {error}\n")
 
     elif args.command == "duplicates":
         try:
+            logger.info("Starting duplicate scan: %s", args.folder)
+
             duplicates = find_duplicates(args.folder)
 
             if not duplicates:
                 print("No duplicate files found.")
+                logger.info("No duplicate files found in: %s", args.folder)
+                print(f"Activity log: {LOG_FILE.resolve()}")
                 return
 
             print("\nAUTOFLOW DUPLICATES")
             print("-" * 35)
 
+            total_duplicate_files = 0
+
             for file_hash, paths in duplicates.items():
                 print("\nDuplicate group:")
+                logger.info("Duplicate group found: %s", file_hash)
 
                 for path in paths:
                     print(f"  {path}")
+                    logger.info("Duplicate file: %s", path)
+
+                total_duplicate_files += len(paths)
+
+            print("\nSCAN SUMMARY")
+            print("-" * 35)
+            print(f"Duplicate groups: {len(duplicates)}")
+            print(f"Files involved: {total_duplicate_files}")
+            print(f"Activity log: {LOG_FILE.resolve()}")
+
+            logger.info(
+                "Duplicate scan completed. Groups: %s, files involved: %s",
+                len(duplicates),
+                total_duplicate_files
+            )
 
         except (NotADirectoryError, PermissionError) as error:
+            logger.error("Duplicate scan failed: %s", error)
             parser.exit(1, f"Error: {error}\n")
 
 
