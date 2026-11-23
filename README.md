@@ -168,7 +168,13 @@ Run the included demonstration:
 python examples/demo.py
 ```
 
-The demonstration uses temporary sample files to show file organisation and duplicate detection.
+The demonstration creates sample files in a temporary directory and showcases three stages:
+
+1. **File Organisation Preview:** Shows where different files would be organised without moving them.
+2. **Duplicate Detection:** Identifies identical files and displays scan statistics, including potential storage savings.
+3. **CSV Report Generation:** Creates and displays a CSV report containing the detected duplicate files.
+
+The demonstration uses temporary sample files. It does not reorganise or delete files from your personal directories. The temporary demonstration folder is automatically cleaned up when it finishes.
 
 ## Supported File Categories
 
@@ -223,6 +229,7 @@ autoflow-toolkit/
 ├── CONTRIBUTING.md
 ├── LICENSE
 ├── pyproject.toml
+├── run_test.py
 └── .gitignore
 ```
 
