@@ -1,4 +1,5 @@
 
+import csv
 import subprocess
 import sys
 import tempfile
@@ -73,6 +74,143 @@ class TestCLI(unittest.TestCase):
             self.assertIn(
                 "Potential storage savings: 12.00 bytes",
                 result.stdout,
+            )
+
+    def test_duplicates_export_creates_csv_report(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            first_file = folder / "one.txt"
+            second_file = folder / "two.txt"
+            report = folder / "duplicates.csv"
+
+            first_file.write_text("same content")
+            second_file.write_text("same content")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "autoflow.cli",
+                    "duplicates",
+                    str(folder),
+                    "--export",
+                    str(report),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertTrue(report.exists())
+            self.assertIn("CSV report:", result.stdout)
+
+            with report.open(
+                "r",
+                newline="",
+                encoding="utf-8"
+            ) as csv_file:
+                rows = list(csv.DictReader(csv_file))
+
+            self.assertEqual(len(rows), 2)
+
+            exported_paths = {
+                row["File Path"] for row in rows
+            }
+
+            expected_paths = {
+                str(first_file.resolve()),
+                str(second_file.resolve()),
+            }
+
+            self.assertEqual(exported_paths, expected_paths)
+
+            for row in rows:
+                self.assertEqual(row["File Size (Bytes)"], "12")
+                self.assertEqual(
+                    row["Potential Storage Savings (Bytes)"],
+                    "12",
+                )
+
+            self.assertEqual(
+                rows[0]["Duplicate Group"],
+                rows[1]["Duplicate Group"],
+            )
+
+    def test_duplicates_export_does_not_overwrite_existing_report(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            (folder / "one.txt").write_text("same content")
+            (folder / "two.txt").write_text("same content")
+
+            report = folder / "duplicates.csv"
+            report.write_text("Existing report")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "autoflow.cli",
+                    "duplicates",
+                    str(folder),
+                    "--export",
+                    str(report),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(
+                report.read_text(),
+                "Existing report",
+            )
+            self.assertIn("Report already exists", result.stderr)
+
+    def test_duplicates_export_creates_report_without_duplicates(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            (folder / "unique.txt").write_text("unique content")
+
+            report = folder / "duplicates.csv"
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "autoflow.cli",
+                    "duplicates",
+                    str(folder),
+                    "--export",
+                    str(report),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertTrue(report.exists())
+            self.assertIn("No duplicate files found.", result.stdout)
+
+            with report.open(
+                "r",
+                newline="",
+                encoding="utf-8"
+            ) as csv_file:
+                reader = csv.DictReader(csv_file)
+                rows = list(reader)
+
+            self.assertEqual(rows, [])
+            self.assertEqual(
+                reader.fieldnames,
+                [
+                    "Duplicate Group",
+                    "File Path",
+                    "File Size (Bytes)",
+                    "Potential Storage Savings (Bytes)",
+                ],
             )
 
     def test_organise_rejects_missing_folder(self):

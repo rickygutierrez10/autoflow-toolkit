@@ -1,6 +1,7 @@
 
-import logging
 import argparse
+import csv
+import logging
 from pathlib import Path
 
 from autoflow.duplicates import (
@@ -36,13 +37,72 @@ def format_size(size: int) -> str:
     return f"{size:.2f} TB"
 
 
+def export_duplicates(duplicates: dict, output_file: str) -> Path:
+    """Export duplicate file details to a CSV report."""
+
+    destination = Path(output_file).expanduser().resolve()
+
+    if destination.exists():
+        raise FileExistsError(
+            f"Report already exists: {destination}"
+        )
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    with destination.open(
+        "w",
+        newline="",
+        encoding="utf-8"
+    ) as csv_file:
+        writer = csv.writer(csv_file)
+
+        writer.writerow([
+            "Duplicate Group",
+            "File Path",
+            "File Size (Bytes)",
+            "Potential Storage Savings (Bytes)",
+        ])
+
+        for file_hash, paths in duplicates.items():
+            try:
+                file_size = paths[0].stat().st_size
+            except OSError:
+                file_size = ""
+
+            potential_savings = (
+                file_size * (len(paths) - 1)
+                if isinstance(file_size, int)
+                else ""
+            )
+
+            for path in paths:
+                try:
+                    current_size = path.stat().st_size
+                except OSError:
+                    current_size = ""
+
+                writer.writerow([
+                    file_hash,
+                    str(path),
+                    current_size,
+                    potential_savings,
+                ])
+
+    logger.info("Duplicate report exported: %s", destination)
+
+    return destination
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="autoflow",
         description="A simple file automation toolkit."
     )
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(
+        dest="command",
+        required=True
+    )
 
     # Organise command
     organise_parser = subparsers.add_parser(
@@ -76,6 +136,12 @@ def main():
     duplicate_parser.add_argument(
         "folder",
         help="Folder to scan for duplicate files."
+    )
+
+    duplicate_parser.add_argument(
+        "--export",
+        metavar="CSV_FILE",
+        help="Export duplicate results to a CSV file."
     )
 
     args = parser.parse_args()
@@ -151,6 +217,14 @@ def main():
                 "Potential storage savings: "
                 f"{format_size(storage_savings)}"
             )
+
+            if args.export:
+                report_path = export_duplicates(
+                    duplicates,
+                    args.export
+                )
+                print(f"CSV report: {report_path}")
+
             print(f"Activity log: {LOG_FILE.resolve()}")
 
             logger.info(
@@ -163,8 +237,13 @@ def main():
                 storage_savings
             )
 
-        except (NotADirectoryError, PermissionError) as error:
-            logger.error("Duplicate scan failed: %s", error)
+        except (
+            NotADirectoryError,
+            PermissionError,
+            FileExistsError,
+            OSError,
+        ) as error:
+            logger.error("Duplicate scan or export failed: %s", error)
             parser.exit(1, f"Error: {error}\n")
 
 
