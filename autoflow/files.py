@@ -14,6 +14,35 @@ FILE_CATEGORIES = {
 }
 
 
+def get_unique_destination(
+    destination: Path,
+    reserved: set = None,
+) -> Path:
+    """Return a filename that does not already exist or is reserved."""
+
+    if reserved is None:
+        reserved = set()
+
+    if not destination.exists() and destination not in reserved:
+        return destination
+
+    counter = 1
+
+    while True:
+        unique_name = (
+            f"{destination.stem}_{counter}{destination.suffix}"
+        )
+        unique_destination = destination.with_name(unique_name)
+
+        if (
+            not unique_destination.exists()
+            and unique_destination not in reserved
+        ):
+            return unique_destination
+
+        counter += 1
+
+
 def organise_files(
     folder: str,
     dry_run: bool = True,
@@ -27,6 +56,7 @@ def organise_files(
         raise NotADirectoryError(f"Folder does not exist: {source}")
 
     results = {}
+    planned_destinations = set()
 
     category_names = set(FILE_CATEGORIES) | {"Other"}
 
@@ -55,20 +85,25 @@ def organise_files(
                 "Other",
             )
 
-            destination = source / category / file.name
+            destination_folder = source / category
+            destination = destination_folder / file.name
 
             if file == destination:
                 continue
 
+            # Reserve each planned destination to prevent preview conflicts.
+            destination = get_unique_destination(
+                destination,
+                planned_destinations,
+            )
+
+            planned_destinations.add(destination)
+
+            relative_destination = destination.relative_to(source)
+
             if dry_run:
                 results[str(relative_path)] = (
-                    f"Would move to {category}"
-                )
-                continue
-
-            if destination.exists():
-                results[str(relative_path)] = (
-                    "Skipped: destination already exists"
+                    f"Would move to {relative_destination}"
                 )
                 continue
 
@@ -77,7 +112,7 @@ def organise_files(
             shutil.move(str(file), str(destination))
 
             results[str(relative_path)] = (
-                f"Moved to {category}"
+                f"Moved to {relative_destination}"
             )
 
         except OSError as error:

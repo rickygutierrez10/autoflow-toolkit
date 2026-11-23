@@ -20,7 +20,7 @@ class TestFileOrganiser(unittest.TestCase):
 
             self.assertEqual(
                 results["document.pdf"],
-                "Would move to Documents"
+                "Would move to Documents/document.pdf"
             )
             self.assertTrue(file.exists())
             self.assertFalse((folder / "Documents").exists())
@@ -35,7 +35,10 @@ class TestFileOrganiser(unittest.TestCase):
 
             destination = folder / "Images" / "photo.jpg"
 
-            self.assertEqual(results["photo.jpg"], "Moved to Images")
+            self.assertEqual(
+                results["photo.jpg"],
+                "Moved to Images/photo.jpg"
+            )
             self.assertTrue(destination.exists())
             self.assertFalse(file.exists())
 
@@ -54,15 +57,16 @@ class TestFileOrganiser(unittest.TestCase):
 
             results = organise_files(str(folder), dry_run=False)
 
+            renamed_file = destination_folder / "photo_1.jpg"
+
             self.assertEqual(
                 results["photo.jpg"],
-                "Skipped: destination already exists"
+                "Moved to Images/photo_1.jpg"
             )
-            self.assertEqual(
-                existing_file.read_text(),
-                "original image"
-            )
-            self.assertTrue(file.exists())
+            self.assertTrue(renamed_file.exists())
+            self.assertEqual(renamed_file.read_text(), "new image")
+            self.assertEqual(existing_file.read_text(), "original image")
+            self.assertFalse(file.exists())
 
     def test_unknown_file_types_go_into_other_folder(self):
         with TemporaryDirectory() as temp:
@@ -75,7 +79,10 @@ class TestFileOrganiser(unittest.TestCase):
             destination = folder / "Other" / "example.xyz"
 
             self.assertTrue(destination.exists())
-            self.assertEqual(results["example.xyz"], "Moved to Other")
+            self.assertEqual(
+                results["example.xyz"],
+                "Moved to Other/example.xyz"
+            )
 
     def test_continues_when_file_move_fails(self):
         with TemporaryDirectory() as temp:
@@ -106,7 +113,7 @@ class TestFileOrganiser(unittest.TestCase):
 
             self.assertEqual(
                 results["success.jpg"],
-                "Moved to Images"
+                "Moved to Images/success.jpg"
             )
             self.assertTrue(
                 (folder / "Images" / "success.jpg").exists()
@@ -133,7 +140,7 @@ class TestFileOrganiser(unittest.TestCase):
             self.assertFalse(file.exists())
             self.assertEqual(
                 results["Downloads/photo.jpg"],
-                "Moved to Images",
+                "Moved to Images/photo.jpg",
             )
 
     def test_recursive_dry_run_does_not_move_files(self):
@@ -154,7 +161,7 @@ class TestFileOrganiser(unittest.TestCase):
             self.assertTrue(file.exists())
             self.assertEqual(
                 results["Downloads/document.pdf"],
-                "Would move to Documents",
+                "Would move to Documents/document.pdf",
             )
 
     def test_recursive_does_not_reorganise_category_folders(self):
@@ -174,6 +181,101 @@ class TestFileOrganiser(unittest.TestCase):
 
             self.assertTrue(file.exists())
             self.assertEqual(results, {})
+
+    def test_recursive_handles_duplicate_filenames(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            first_folder = folder / "Work"
+            second_folder = folder / "Personal"
+
+            first_folder.mkdir()
+            second_folder.mkdir()
+
+            (first_folder / "report.pdf").write_text("Work report")
+            (second_folder / "report.pdf").write_text("Personal report")
+
+            results = organise_files(
+                str(folder),
+                dry_run=False,
+                recursive=True,
+            )
+
+            destination = folder / "Documents"
+
+            self.assertTrue((destination / "report.pdf").exists())
+            self.assertTrue((destination / "report_1.pdf").exists())
+
+            contents = {
+                (destination / "report.pdf").read_text(),
+                (destination / "report_1.pdf").read_text(),
+            }
+
+            self.assertEqual(
+                contents,
+                {"Work report", "Personal report"},
+            )
+
+            self.assertEqual(len(results), 2)
+
+    def test_recursive_handles_three_duplicate_filenames(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            for name in ["Work", "Personal", "Archive"]:
+                subfolder = folder / name
+                subfolder.mkdir()
+                (subfolder / "report.pdf").write_text(name)
+
+            organise_files(
+                str(folder),
+                dry_run=False,
+                recursive=True,
+            )
+
+            destination = folder / "Documents"
+
+            self.assertTrue((destination / "report.pdf").exists())
+            self.assertTrue((destination / "report_1.pdf").exists())
+            self.assertTrue((destination / "report_2.pdf").exists())
+
+    def test_recursive_duplicate_dry_run_shows_unique_names(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            first_folder = folder / "Work"
+            second_folder = folder / "Personal"
+
+            first_folder.mkdir()
+            second_folder.mkdir()
+
+            first_file = first_folder / "report.pdf"
+            second_file = second_folder / "report.pdf"
+
+            first_file.write_text("Work report")
+            second_file.write_text("Personal report")
+
+            results = organise_files(
+                str(folder),
+                dry_run=True,
+                recursive=True,
+            )
+
+            self.assertEqual(
+                len(results),
+                2,
+            )
+
+            self.assertEqual(
+                set(results.values()),
+                {
+                    "Would move to Documents/report.pdf",
+                    "Would move to Documents/report_1.pdf",
+                },
+            )
+
+            self.assertTrue(first_file.exists())
+            self.assertTrue(second_file.exists())
 
 
 if __name__ == "__main__":
