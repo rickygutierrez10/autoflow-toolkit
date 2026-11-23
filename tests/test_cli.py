@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from autoflow.cli import format_size
 
+
 class TestCLI(unittest.TestCase):
 
     def test_help_command(self):
@@ -69,6 +70,10 @@ class TestCLI(unittest.TestCase):
             self.assertIn("Duplicate groups: 1", result.stdout)
             self.assertIn("Files involved: 2", result.stdout)
             self.assertIn("Files skipped: 0", result.stdout)
+            self.assertIn(
+                "Potential storage savings: 12.00 bytes",
+                result.stdout,
+            )
 
     def test_organise_rejects_missing_folder(self):
         with tempfile.TemporaryDirectory() as temporary_folder:
@@ -176,7 +181,6 @@ class TestCLI(unittest.TestCase):
             self.assertIn("No files found to organise.", result.stdout)
             self.assertTrue((subfolder / "photo.jpg").exists())
 
-
     def test_format_size_displays_bytes(self):
         self.assertEqual(format_size(500), "500.00 bytes")
 
@@ -191,6 +195,7 @@ class TestCLI(unittest.TestCase):
             format_size(1024 * 1024 * 1024),
             "1.00 GB",
         )
+
 
 if __name__ == "__main__":
     unittest.main()

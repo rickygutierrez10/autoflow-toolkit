@@ -1,19 +1,44 @@
 
 import hashlib
 import logging
+import os
 from pathlib import Path
 
 logger = logging.getLogger("autoflow")
 
 
 def calculate_file_hash(file_path: Path) -> str:
-    """Calculate the SHA-256 hash of a file."""
+    """Calculate the SHA-256 hash of a file.
+
+    Raise OSError if the file changes while being read.
+    """
 
     sha256 = hashlib.sha256()
 
     with file_path.open("rb") as file:
+        original_stat = os.fstat(file.fileno())
+
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
             sha256.update(chunk)
+
+        final_stat = os.fstat(file.fileno())
+
+    original_details = (
+        original_stat.st_size,
+        original_stat.st_mtime_ns,
+        original_stat.st_ino,
+    )
+
+    final_details = (
+        final_stat.st_size,
+        final_stat.st_mtime_ns,
+        final_stat.st_ino,
+    )
+
+    if original_details != final_details:
+        raise OSError(
+            f"File changed while being read: {file_path}"
+        )
 
     return sha256.hexdigest()
 

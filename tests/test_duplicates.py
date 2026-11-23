@@ -2,6 +2,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from autoflow.duplicates import (
@@ -10,6 +11,7 @@ from autoflow.duplicates import (
     calculate_file_hash,
     scan_duplicates,
 )
+
 
 class TestDuplicateFinder(unittest.TestCase):
 
@@ -94,6 +96,32 @@ class TestDuplicateFinder(unittest.TestCase):
 
             self.assertEqual(first_hash, second_hash)
 
+    def test_hashing_detects_file_changed_during_read(self):
+        with TemporaryDirectory() as temp:
+            file_path = Path(temp) / "changing.txt"
+            file_path.write_text("original content")
+
+            original_stat = file_path.stat()
+
+            before = SimpleNamespace(
+                st_size=original_stat.st_size,
+                st_mtime_ns=original_stat.st_mtime_ns,
+                st_ino=original_stat.st_ino,
+            )
+
+            after = SimpleNamespace(
+                st_size=original_stat.st_size + 10,
+                st_mtime_ns=original_stat.st_mtime_ns + 1,
+                st_ino=original_stat.st_ino,
+            )
+
+            with patch(
+                "autoflow.duplicates.os.fstat",
+                side_effect=[before, after],
+            ):
+                with self.assertRaises(OSError):
+                    calculate_file_hash(file_path)
+
     def test_skips_unreadable_file_and_continues_scanning(self):
         with TemporaryDirectory() as temp:
             folder = Path(temp)
@@ -125,6 +153,38 @@ class TestDuplicateFinder(unittest.TestCase):
             self.assertEqual(len(duplicate_files), 2)
             self.assertNotIn(unreadable, duplicate_files)
 
+    def test_scan_duplicates_counts_files_skipped_during_hashing(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            first = folder / "first.txt"
+            second = folder / "second.txt"
+            unreadable = folder / "unreadable.txt"
+
+            first.write_text("same content")
+            second.write_text("same content")
+            unreadable.write_text("same content")
+
+            original_hash = calculate_file_hash
+
+            def simulate_read_error(file_path):
+                if file_path.name == "unreadable.txt":
+                    raise PermissionError("Permission denied")
+
+                return original_hash(file_path)
+
+            with patch(
+                "autoflow.duplicates.calculate_file_hash",
+                side_effect=simulate_read_error,
+            ):
+                duplicates, scanned, skipped = scan_duplicates(
+                    str(folder)
+                )
+
+            self.assertEqual(scanned, 3)
+            self.assertEqual(skipped, 1)
+            self.assertEqual(len(duplicates), 1)
+            self.assertEqual(len(list(duplicates.values())[0]), 2)
 
     def test_calculates_duplicate_storage_savings(self):
         with TemporaryDirectory() as temp:
@@ -148,6 +208,24 @@ class TestDuplicateFinder(unittest.TestCase):
                 savings,
                 first.stat().st_size * 2,
             )
+
+    def test_empty_duplicate_files_have_zero_storage_savings(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            first = folder / "empty1.txt"
+            second = folder / "empty2.txt"
+
+            first.write_text("")
+            second.write_text("")
+
+            duplicates = {
+                "empty_hash": [first, second]
+            }
+
+            savings = calculate_duplicate_savings(duplicates)
+
+            self.assertEqual(savings, 0)
 
     def test_returns_zero_when_no_duplicates_exist(self):
         savings = calculate_duplicate_savings({})
@@ -207,6 +285,29 @@ class TestDuplicateFinder(unittest.TestCase):
             self.assertEqual(scanned, 2)
             self.assertEqual(skipped, 0)
             self.assertEqual(hash_mock.call_count, 2)
+
+    def test_finds_duplicate_empty_files(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            first = folder / "empty1.txt"
+            second = folder / "empty2.txt"
+
+            first.write_text("")
+            second.write_text("")
+
+            duplicates = find_duplicates(str(folder))
+
+            self.assertEqual(len(duplicates), 1)
+
+            duplicate_paths = list(duplicates.values())[0]
+
+            self.assertEqual(len(duplicate_paths), 2)
+            self.assertEqual(
+                {path.name for path in duplicate_paths},
+                {"empty1.txt", "empty2.txt"},
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
