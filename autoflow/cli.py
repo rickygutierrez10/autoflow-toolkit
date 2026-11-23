@@ -43,6 +43,12 @@ def main():
         help="Actually move files. Without this option, only preview changes."
     )
 
+    organise_parser.add_argument(
+        "--recursive",
+        action="store_true",
+        help="Also organise files inside subfolders."
+    )
+
     # Duplicate detection command
     duplicate_parser = subparsers.add_parser(
         "duplicates",
@@ -58,9 +64,17 @@ def main():
 
     if args.command == "organise":
         try:
-            results = organise_files(args.folder, dry_run=not args.apply)
+            results = organise_files(
+                args.folder,
+                dry_run=not args.apply,
+                recursive=args.recursive
+            )
 
-            logger.info("AutoFlow organised folder: %s", args.folder)
+            logger.info(
+                "AutoFlow organised folder: %s (recursive: %s)",
+                args.folder,
+                args.recursive
+            )
 
             if not results:
                 print("No files found to organise.")
@@ -81,7 +95,6 @@ def main():
             logger.error("Organisation failed: %s", error)
             parser.exit(1, f"Error: {error}\n")
 
-    
     elif args.command == "duplicates":
         try:
             logger.info("Starting duplicate scan: %s", args.folder)

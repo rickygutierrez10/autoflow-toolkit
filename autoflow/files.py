@@ -14,7 +14,11 @@ FILE_CATEGORIES = {
 }
 
 
-def organise_files(folder: str, dry_run: bool = True) -> dict:
+def organise_files(
+    folder: str,
+    dry_run: bool = True,
+    recursive: bool = False,
+) -> dict:
     """Organise files into folders based on their extensions."""
 
     source = Path(folder).expanduser().resolve()
@@ -24,9 +28,22 @@ def organise_files(folder: str, dry_run: bool = True) -> dict:
 
     results = {}
 
-    for file in source.iterdir():
+    category_names = set(FILE_CATEGORIES) | {"Other"}
+
+    if recursive:
+        files = source.rglob("*")
+    else:
+        files = source.iterdir()
+
+    for file in files:
         try:
             if not file.is_file():
+                continue
+
+            relative_path = file.relative_to(source)
+
+            # Skip files already inside top-level category folders.
+            if relative_path.parts[0] in category_names:
                 continue
 
             category = next(
@@ -40,12 +57,17 @@ def organise_files(folder: str, dry_run: bool = True) -> dict:
 
             destination = source / category / file.name
 
+            if file == destination:
+                continue
+
             if dry_run:
-                results[file.name] = f"Would move to {category}"
+                results[str(relative_path)] = (
+                    f"Would move to {category}"
+                )
                 continue
 
             if destination.exists():
-                results[file.name] = (
+                results[str(relative_path)] = (
                     "Skipped: destination already exists"
                 )
                 continue
@@ -54,17 +76,17 @@ def organise_files(folder: str, dry_run: bool = True) -> dict:
 
             shutil.move(str(file), str(destination))
 
-            results[file.name] = f"Moved to {category}"
+            results[str(relative_path)] = (
+                f"Moved to {category}"
+            )
 
         except OSError as error:
             logger.warning(
                 "Could not organise file %s: %s",
                 file,
-                error
+                error,
             )
 
-            results[file.name] = f"Error: {error}"
-
-            continue
+            results[str(file.relative_to(source))] = f"Error: {error}"
 
     return results

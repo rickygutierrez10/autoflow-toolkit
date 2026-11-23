@@ -108,6 +108,74 @@ class TestCLI(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("Error:", result.stderr)
 
+    def test_organise_help_shows_recursive_option(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "autoflow.cli",
+                "organise",
+                "--help",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("--recursive", result.stdout)
+
+    def test_recursive_organise_command_previews_subfolders(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+            subfolder = folder / "Downloads"
+            subfolder.mkdir()
+
+            (subfolder / "photo.jpg").write_text("photo")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "autoflow.cli",
+                    "organise",
+                    str(folder),
+                    "--recursive",
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertIn(
+                "Downloads/photo.jpg: Would move to Images",
+                result.stdout,
+            )
+            self.assertTrue((subfolder / "photo.jpg").exists())
+
+    def test_normal_organise_command_does_not_scan_subfolders(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+            subfolder = folder / "Downloads"
+            subfolder.mkdir()
+
+            (subfolder / "photo.jpg").write_text("photo")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "autoflow.cli",
+                    "organise",
+                    str(folder),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertIn("No files found to organise.", result.stdout)
+            self.assertTrue((subfolder / "photo.jpg").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -87,7 +87,6 @@ class TestFileOrganiser(unittest.TestCase):
             failing_file.write_text("document")
             successful_file.write_text("image")
 
-            # Save the original function before mocking it.
             real_move = shutil.move
 
             def simulate_move_error(source, destination):
@@ -112,6 +111,69 @@ class TestFileOrganiser(unittest.TestCase):
             self.assertTrue(
                 (folder / "Images" / "success.jpg").exists()
             )
+
+    def test_recursive_organises_files_in_subfolders(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+            subfolder = folder / "Downloads"
+            subfolder.mkdir()
+
+            file = subfolder / "photo.jpg"
+            file.write_text("test image")
+
+            results = organise_files(
+                str(folder),
+                dry_run=False,
+                recursive=True,
+            )
+
+            destination = folder / "Images" / "photo.jpg"
+
+            self.assertTrue(destination.exists())
+            self.assertFalse(file.exists())
+            self.assertEqual(
+                results["Downloads/photo.jpg"],
+                "Moved to Images",
+            )
+
+    def test_recursive_dry_run_does_not_move_files(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+            subfolder = folder / "Downloads"
+            subfolder.mkdir()
+
+            file = subfolder / "document.pdf"
+            file.write_text("test document")
+
+            results = organise_files(
+                str(folder),
+                dry_run=True,
+                recursive=True,
+            )
+
+            self.assertTrue(file.exists())
+            self.assertEqual(
+                results["Downloads/document.pdf"],
+                "Would move to Documents",
+            )
+
+    def test_recursive_does_not_reorganise_category_folders(self):
+        with TemporaryDirectory() as temp:
+            folder = Path(temp)
+            category = folder / "Images"
+            category.mkdir()
+
+            file = category / "photo.jpg"
+            file.write_text("test image")
+
+            results = organise_files(
+                str(folder),
+                dry_run=False,
+                recursive=True,
+            )
+
+            self.assertTrue(file.exists())
+            self.assertEqual(results, {})
 
 
 if __name__ == "__main__":
