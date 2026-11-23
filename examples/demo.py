@@ -1,9 +1,10 @@
 
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 
 from autoflow.files import organise_files
-from autoflow.duplicates import scan_duplicates
 
 
 def main():
@@ -20,50 +21,67 @@ def main():
         }
 
         for filename, content in sample_files.items():
-            (demo_folder / filename).write_text(content)
+            (demo_folder / filename).write_text(
+                content,
+                encoding="utf-8",
+            )
 
         print("\nAUTOFLOW TOOLKIT DEMONSTRATION")
-        print("=" * 40)
+        print("=" * 45)
 
         # Demonstrate file organisation.
         print("\n1. FILE ORGANISATION PREVIEW")
-        print("-" * 40)
+        print("-" * 45)
 
-        results = organise_files(str(demo_folder), dry_run=True)
+        results = organise_files(
+            str(demo_folder),
+            dry_run=True,
+        )
 
         for filename, result in results.items():
             print(f"{filename}: {result}")
 
-        # Demonstrate duplicate detection.
-        print("\n2. DUPLICATE FILE DETECTION")
-        print("-" * 40)
+        print("\nNo files were moved. This was a preview only.")
 
-        duplicates, scanned, skipped = scan_duplicates(
-            str(demo_folder)
+        # Demonstrate duplicate detection and CSV export.
+        print("\n2. DUPLICATE DETECTION AND CSV EXPORT")
+        print("-" * 45)
+
+        report_path = demo_folder / "duplicate-report.csv"
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "autoflow.cli",
+                "duplicates",
+                str(demo_folder),
+                "--export",
+                str(report_path),
+            ],
+            capture_output=True,
+            text=True,
         )
 
-        if duplicates:
-            for paths in duplicates.values():
-                print("\nDuplicate group:")
+        if result.returncode != 0:
+            print("The demonstration encountered an error.")
+            print(result.stderr)
+            return
 
-                for path in paths:
-                    print(f"  {path.name}")
+        print(result.stdout)
+
+        # Display the generated CSV report.
+        print("\n3. GENERATED CSV REPORT")
+        print("-" * 45)
+
+        if report_path.exists():
+            print(report_path.read_text(encoding="utf-8"))
         else:
-            print("No duplicate files found.")
-
-        # Display scan statistics.
-        total_duplicate_files = sum(
-            len(paths) for paths in duplicates.values()
-        )
-
-        print("\nSCAN SUMMARY")
-        print("-" * 40)
-        print(f"Files scanned: {scanned}")
-        print(f"Duplicate groups: {len(duplicates)}")
-        print(f"Files involved: {total_duplicate_files}")
-        print(f"Files skipped: {skipped}")
+            print("CSV report could not be found.")
 
         print("\nDemonstration complete!")
+        print("All sample files were stored in a temporary folder.")
+        print("The temporary folder will now be cleaned up.")
 
 
 if __name__ == "__main__":
