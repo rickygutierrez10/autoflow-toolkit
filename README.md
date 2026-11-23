@@ -1,5 +1,7 @@
 # AutoFlow Toolkit
 
+[![AutoFlow Tests](https://github.com/rickygutierrez10/autoflow-toolkit/actions/workflows/tests.yml/badge.svg)](https://github.com/rickygutierrez10/autoflow-toolkit/actions/workflows/tests.yml)
+
 **A Python command-line toolkit for file organisation, duplicate detection and storage analysis.**
 
 AutoFlow Toolkit helps users organise cluttered directories, identify duplicate files and understand how much storage space could potentially be recovered.
@@ -206,6 +208,8 @@ AutoFlow includes automated tests covering:
 - CSV report export and protection
 - Command-line functionality
 - Error handling
+
+GitHub Actions automatically runs the test suite on pushes and pull requests using Python 3.9, 3.12 and 3.14.
 
 ## Project Structure
 
