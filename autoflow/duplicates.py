@@ -17,14 +17,16 @@ def calculate_file_hash(file_path: Path) -> str:
     return sha256.hexdigest()
 
 
-def find_duplicates(folder: str) -> dict:
-    """Find files with identical contents inside a folder."""
+def scan_duplicates(folder: str) -> tuple[dict, int, int]:
+    """Find duplicate files and return scan statistics."""
     source = Path(folder).expanduser().resolve()
 
     if not source.is_dir():
         raise NotADirectoryError(f"Folder does not exist: {source}")
 
     hashes = {}
+    scanned_files = 0
+    skipped_files = 0
 
     for file_path in source.rglob("*"):
         if not file_path.is_file():
@@ -33,17 +35,26 @@ def find_duplicates(folder: str) -> dict:
         try:
             file_hash = calculate_file_hash(file_path)
             hashes.setdefault(file_hash, []).append(file_path)
+            scanned_files += 1
 
         except OSError as error:
+            skipped_files += 1
             logger.warning(
                 "Could not read file %s: %s",
                 file_path,
                 error
             )
-            continue
 
-    return {
+    duplicates = {
         file_hash: paths
         for file_hash, paths in hashes.items()
         if len(paths) > 1
     }
+
+    return duplicates, scanned_files, skipped_files
+
+
+def find_duplicates(folder: str) -> dict:
+    """Find files with identical contents inside a folder."""
+    duplicates, _, _ = scan_duplicates(folder)
+    return duplicates
