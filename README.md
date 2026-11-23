@@ -1,17 +1,18 @@
+
 # AutoFlow Toolkit
 
-A simple Python automation toolkit that helps organise files and detect duplicate files using their contents.
+A simple Python toolkit for automating file organisation and detecting duplicate files.
+
+AutoFlow helps users organise cluttered folders, identify duplicate files, and understand what happens during each scan.
 
 ## Features
 
-- Automatically organises files into categories.
-- Supports images, documents, videos, archives and spreadsheets.
-- Preview changes before moving anything.
-- Safe mode by default.
-- Prevents existing files from being overwritten.
-- Detects duplicate files using SHA-256 hashing.
-- Logs organisation activity.
-- Includes automated tests.
+- **File Organisation:** Organises files into folders based on their extensions.
+- **Duplicate Detection:** Finds files with identical contents using SHA-256 hashing.
+- **Safe Preview:** Preview file organisation before moving anything.
+- **Scan Statistics:** Displays files scanned, duplicate groups, files involved, and skipped files.
+- **Error Handling:** Skips unreadable files and logs warnings.
+- **Activity Logging:** Records important operations and errors.
 
 ## Installation
 
@@ -19,13 +20,23 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/rickygutierrez10/autoflow-toolkit.git
+```
+
+Enter the project folder:
+
+```bash
 cd autoflow-toolkit
 ```
 
-Create and activate a virtual environment:
+Create a virtual environment:
 
 ```bash
 python3 -m venv .venv
+```
+
+Activate it:
+
+```bash
 source .venv/bin/activate
 ```
 
@@ -37,29 +48,39 @@ python -m pip install -e .
 
 ## Usage
 
-### 1. Organise files
+### 1. Organise Files
 
-Preview file organisation without moving anything:
-
-```bash
-autoflow organise /path/to/your/folder
-```
-
-Actually move the files:
+Preview file organisation:
 
 ```bash
-autoflow organise /path/to/your/folder --apply
+autoflow organise /path/to/folder
 ```
 
-### 2. Find duplicate files
-
-Scan a folder for files with identical contents:
+Actually move files:
 
 ```bash
-autoflow duplicates /path/to/your/folder
+autoflow organise /path/to/folder --apply
 ```
 
-AutoFlow uses SHA-256 hashing to compare file contents. Files with identical contents are displayed together in duplicate groups.
+Without `--apply`, AutoFlow only previews the changes.
+
+### 2. Find Duplicate Files
+
+Scan a folder for duplicates:
+
+```bash
+autoflow duplicates /path/to/folder
+```
+
+AutoFlow identifies files with identical contents and displays a scan summary.
+
+### 3. Run the Demonstration
+
+```bash
+python examples/demo.py
+```
+
+The demonstration shows file organisation and duplicate detection using temporary sample files.
 
 ## Supported File Categories
 
@@ -70,31 +91,38 @@ AutoFlow uses SHA-256 hashing to compare file contents. Files with identical con
 | Videos | mp4, mov, avi |
 | Archives | zip, rar, 7z |
 | Spreadsheets | xlsx, xls, csv |
-
-Unrecognised file types are placed in an `Other` folder.
-## Running the Demonstration
-
-AutoFlow includes a demonstration script that shows how to preview file organisation and detect duplicate files using sample data.
-
-Run the demonstration from the project root:
-
-```bash
-python examples/demo.py
-```
-
-The script creates temporary sample files, demonstrates both features, and automatically cleans up the temporary folder when finished.
+| Other | All other extensions |
 
 ## Running Tests
 
-Run the automated test suite:
+Run the complete test suite:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-## Project Status
+## Project Structure
 
-AutoFlow is an early-stage open-source project. Contributions, suggestions and improvements are welcome.
+```text
+autoflow-toolkit/
+├── autoflow/
+│   ├── files.py
+│   ├── duplicates.py
+│   └── cli.py
+├── tests/
+├── examples/
+│   └── demo.py
+├── README.md
+├── CONTRIBUTING.md
+├── LICENSE
+└── pyproject.toml
+```
+
+## Contributing
+
+Contributions, suggestions, and bug reports are welcome.
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
 ## License
 
