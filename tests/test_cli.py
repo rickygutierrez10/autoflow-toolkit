@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from pathlib import Path
-
+from autoflow.cli import format_size
 
 class TestCLI(unittest.TestCase):
 
@@ -176,6 +176,21 @@ class TestCLI(unittest.TestCase):
             self.assertIn("No files found to organise.", result.stdout)
             self.assertTrue((subfolder / "photo.jpg").exists())
 
+
+    def test_format_size_displays_bytes(self):
+        self.assertEqual(format_size(500), "500.00 bytes")
+
+    def test_format_size_converts_to_kilobytes(self):
+        self.assertEqual(format_size(1024), "1.00 KB")
+
+    def test_format_size_converts_to_megabytes(self):
+        self.assertEqual(format_size(1024 * 1024), "1.00 MB")
+
+    def test_format_size_converts_to_gigabytes(self):
+        self.assertEqual(
+            format_size(1024 * 1024 * 1024),
+            "1.00 GB",
+        )
 
 if __name__ == "__main__":
     unittest.main()

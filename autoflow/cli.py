@@ -3,7 +3,10 @@ import logging
 import argparse
 from pathlib import Path
 
-from autoflow.duplicates import scan_duplicates
+from autoflow.duplicates import (
+    scan_duplicates,
+    calculate_duplicate_savings,
+)
 from autoflow.files import organise_files
 
 
@@ -16,6 +19,21 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("autoflow")
+
+
+def format_size(size: int) -> str:
+    """Convert bytes into a human-readable storage size."""
+
+    units = ["bytes", "KB", "MB", "GB", "TB"]
+    size = float(size)
+
+    for unit in units:
+        if size < 1024 or unit == "TB":
+            return f"{size:.2f} {unit}"
+
+        size /= 1024
+
+    return f"{size:.2f} TB"
 
 
 def main():
@@ -107,6 +125,8 @@ def main():
                 len(paths) for paths in duplicates.values()
             )
 
+            storage_savings = calculate_duplicate_savings(duplicates)
+
             if not duplicates:
                 print("No duplicate files found.")
             else:
@@ -127,15 +147,20 @@ def main():
             print(f"Duplicate groups: {len(duplicates)}")
             print(f"Files involved: {total_duplicate_files}")
             print(f"Files skipped: {skipped_files}")
+            print(
+                "Potential storage savings: "
+                f"{format_size(storage_savings)}"
+            )
             print(f"Activity log: {LOG_FILE.resolve()}")
 
             logger.info(
                 "Duplicate scan completed. Scanned: %s, groups: %s, "
-                "duplicate files: %s, skipped: %s",
+                "duplicate files: %s, skipped: %s, potential savings: %s",
                 scanned_files,
                 len(duplicates),
                 total_duplicate_files,
-                skipped_files
+                skipped_files,
+                storage_savings
             )
 
         except (NotADirectoryError, PermissionError) as error:
