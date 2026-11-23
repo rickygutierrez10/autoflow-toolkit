@@ -42,18 +42,20 @@ def export_duplicates(duplicates: dict, output_file: str) -> Path:
 
     destination = Path(output_file).expanduser().resolve()
 
-    if destination.exists():
-        raise FileExistsError(
-            f"Report already exists: {destination}"
-        )
-
     destination.parent.mkdir(parents=True, exist_ok=True)
 
-    with destination.open(
-        "w",
-        newline="",
-        encoding="utf-8"
-    ) as csv_file:
+    try:
+        csv_file = destination.open(
+            "x",
+            newline="",
+            encoding="utf-8"
+        )
+    except FileExistsError:
+        raise FileExistsError(
+            f"Report already exists: {destination}"
+        ) from None
+
+    with csv_file:
         writer = csv.writer(csv_file)
 
         writer.writerow([
@@ -183,8 +185,15 @@ def main():
         try:
             logger.info("Starting duplicate scan: %s", args.folder)
 
+            excluded_report = (
+                Path(args.export).expanduser().resolve()
+                if args.export
+                else None
+            )
+
             duplicates, scanned_files, skipped_files = scan_duplicates(
-                args.folder
+                args.folder,
+                exclude_path=excluded_report
             )
 
             total_duplicate_files = sum(

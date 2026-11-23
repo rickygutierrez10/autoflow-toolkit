@@ -137,6 +137,45 @@ class TestCLI(unittest.TestCase):
                 rows[1]["Duplicate Group"],
             )
 
+    def test_duplicates_export_excludes_existing_report_from_scan(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder = Path(temp)
+
+            (folder / "one.txt").write_text("same content")
+            (folder / "two.txt").write_text("same content")
+
+            report = folder / "duplicates.csv"
+            report.write_text("An old report")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "autoflow.cli",
+                    "duplicates",
+                    str(folder),
+                    "--export",
+                    str(report),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            # The scan should complete, but export should refuse
+            # to overwrite the existing report.
+            self.assertNotEqual(result.returncode, 0)
+
+            # Only the two text files should be counted.
+            self.assertIn("Files scanned: 2", result.stdout)
+
+            # Existing report must remain unchanged.
+            self.assertEqual(
+                report.read_text(),
+                "An old report",
+            )
+
+            self.assertIn("Report already exists", result.stderr)
+
     def test_duplicates_export_does_not_overwrite_existing_report(self):
         with tempfile.TemporaryDirectory() as temp:
             folder = Path(temp)

@@ -3,6 +3,7 @@ import hashlib
 import logging
 import os
 from pathlib import Path
+from typing import Optional
 
 logger = logging.getLogger("autoflow")
 
@@ -43,13 +44,25 @@ def calculate_file_hash(file_path: Path) -> str:
     return sha256.hexdigest()
 
 
-def scan_duplicates(folder: str) -> tuple[dict, int, int]:
-    """Find duplicate files using file sizes before calculating hashes."""
+def scan_duplicates(
+    folder: str,
+    exclude_path: Optional[Path] = None,
+) -> tuple[dict, int, int]:
+    """Find duplicate files using file sizes before calculating hashes.
+
+    Optionally exclude one file from the scan.
+    """
 
     source = Path(folder).expanduser().resolve()
 
     if not source.is_dir():
         raise NotADirectoryError(f"Folder does not exist: {source}")
+
+    excluded_file = (
+        Path(exclude_path).expanduser().resolve()
+        if exclude_path is not None
+        else None
+    )
 
     files_by_size = {}
     scanned_files = 0
@@ -59,6 +72,10 @@ def scan_duplicates(folder: str) -> tuple[dict, int, int]:
     for file_path in source.rglob("*"):
         if not file_path.is_file():
             continue
+
+        if excluded_file is not None:
+            if file_path.resolve() == excluded_file:
+                continue
 
         try:
             file_size = file_path.stat().st_size
