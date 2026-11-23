@@ -72,6 +72,17 @@ AutoFlow uses SHA-256 hashing to compare file contents. Files with identical con
 | Spreadsheets | xlsx, xls, csv |
 
 Unrecognised file types are placed in an `Other` folder.
+## Running the Demonstration
+
+AutoFlow includes a demonstration script that shows how to preview file organisation and detect duplicate files using sample data.
+
+Run the demonstration from the project root:
+
+```bash
+python examples/demo.py
+```
+
+The script creates temporary sample files, demonstrates both features, and automatically cleans up the temporary folder when finished.
 
 ## Running Tests
 
